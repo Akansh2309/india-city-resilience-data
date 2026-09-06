@@ -1,14 +1,54 @@
-VERIFIED DATA SOURCES & APIs USED FOR DATASET COLLECTION
-=========================================================
+================================================================================
+VERIFIED DATA SOURCES, METHODOLOGY, AND PROVENANCE
+Project: India Smart City Resilience Dataset (2004-2024)
+Author: Akansh Shaw
+================================================================================
 
-1. NASA POWER API (Prediction Of Worldwide Energy Resources)
-   - Source: https://power.larc.nasa.gov/
-   - Purpose: Primary source for hourly historical meteorological and solar radiation data.
-   - Validation: Data is derived from NASA's Global Modeling and Assimilation Office (GMAO) and NASA's Clouds and the Earth's Radiant Energy System (CERES) project.
-   - Reliability: 100% verified, mathematically precise satellite and assimilation model data.
+This document serves as the absolute technical guarantee of data provenance. No synthetic data, hallucinated metrics, or unverified scraping techniques were used in the generation of this dataset. 
 
-2. OpenStreetMap / Nominatim API (https://nominatim.openstreetmap.org/)
-   - Purpose: Precise latitude and longitude geocoding for Indian cities to map the exact locations for the NASA satellites.
-   - Reliability: Verified open-source global mapping project.
+Every single row (8.7+ million rows) was programmatically extracted, verified, and parsed directly from official aerospace and open-source geospatial APIs.
 
-NOTE: No synthetic data, hallucinated data, or unreliable scraping techniques are used. Every single row of data is fetched directly from NASA's official verified API.
+--------------------------------------------------------------------------------
+1. PRIMARY METEOROLOGICAL SOURCE: NASA POWER
+--------------------------------------------------------------------------------
+- API: NASA Prediction Of Worldwide Energy Resources (POWER)
+- Endpoint Used: https://power.larc.nasa.gov/api/temporal/hourly/point
+- Temporal Resolution: Hourly Time-Series (24-hour UTC format)
+- Spatial Resolution: 1/2 x 1/2 degree (approximately 50x50 km) global grid.
+
+Data Derivation & Satellite Models:
+- The meteorology data is strictly derived from NASA's Global Modeling and Assimilation Office (GMAO), specifically the Modern-Era Retrospective analysis for Research and Applications, Version 2 (MERRA-2) assimilation model.
+- The solar radiation data is derived from NASA's Clouds and the Earth's Radiant Energy System (CERES) project.
+
+Exact Parameters Extracted (NASA Codes):
+- T2M (Temperature at 2 Meters): Measured in Celsius.
+- RH2M (Relative Humidity at 2 Meters): Measured as a percentage.
+- PRECTOTCORR (Corrected Total Precipitation): Measured in mm/hour.
+- WS10M (Wind Speed at 10 Meters): Measured in m/s (converted in script).
+- PS (Surface Pressure): Measured in kPa.
+- ALLSKY_SFC_SW_DWN (All Sky Surface Shortwave Downward Irradiance): Measured in W/m^2 (Solar Radiation).
+
+Data Integrity & Missing Values:
+- NASA POWER represents missing or unrecorded satellite data points with the strict float value `-999.0`. 
+- Our ETL pipeline actively intercepts these values and mathematically converts them to standard `NaN` (Null) formats for seamless Pandas and Scikit-Learn integration.
+
+--------------------------------------------------------------------------------
+2. GEOSPATIAL MAPPING SOURCE: OpenStreetMap (OSM)
+--------------------------------------------------------------------------------
+- API: Nominatim Geocoding API (https://nominatim.openstreetmap.org/)
+- Purpose: Automated translation of Indian City Strings (e.g., "Mumbai", "Bengaluru") into mathematically precise Latitude/Longitude floating-point coordinate pairs.
+- Execution: Coordinates are rounded to 4 decimal places to interface perfectly with the NASA POWER grid requirements.
+- License: Open Data Commons Open Database License (ODbL).
+
+--------------------------------------------------------------------------------
+3. EXTRACTION METHODOLOGY & DATA ENGINEERING
+--------------------------------------------------------------------------------
+- Infrastructure: Python 3.11+, leveraging `requests` for JSON API ingestion, and `pandas` for in-memory dataframe chunking.
+- Scalability: To bypass NASA's strict "1-year maximum per request" limitation on hourly data, our automated pipeline utilizes iterative time-chunking. It loops over 20 distinct years (2004-2023) across 50 cities, executing 1,000 discrete API calls and appending the data systematically without overwhelming system RAM.
+- Integrity: All data is saved in a raw, uncompressed Comma Separated Value (.csv) format to ensure universal compatibility with R, Python, SQL, and Apache Spark environments.
+
+--------------------------------------------------------------------------------
+COPYRIGHT & USAGE
+--------------------------------------------------------------------------------
+This dataset architecture and ETL pipeline is copyrighted (c) 2026 by Akansh Shaw.
+Dataset released under Creative Commons Attribution (CC BY 4.0).
