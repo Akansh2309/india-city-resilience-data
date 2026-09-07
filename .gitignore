@@ -1,0 +1,14 @@
+# Ignore huge data files so GitHub doesn't crash
+*.csv
+*.xlsx
+*.json
+
+# Ignore Python cached files
+__pycache__/
+*.pyc
+
+# Ignore environment variables (where your API keys will go)
+.env
+india_resilience_data_nasa.csv
+*.jpg
+.DS_Store
