@@ -8,7 +8,6 @@ import datetime
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
     page_title="FloodSafe India",
-    page_icon="🌊",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
@@ -92,7 +91,7 @@ elif authentication_status:
     # --- MAIN APP ---
     authenticator.logout('Logout', 'sidebar')
     
-    st.title("🌊 FloodSafe India")
+    st.title("FloodSafe India")
     st.markdown(f"Welcome back, **{name}**! Use the simple sliders below to predict the likelihood of a flash flood.")
     
     # Check if model exists
@@ -110,7 +109,7 @@ elif authentication_status:
         st.stop()
 
     # --- UI SLIDERS (No Horizontal Scrolling) ---
-    st.markdown("### 🌡️ Current Weather Conditions")
+    st.markdown("### Current Weather Conditions")
     
     temp = st.slider("Temperature (°C)", min_value=0.0, max_value=50.0, value=25.0, step=0.1)
     humidity = st.slider("Humidity (%)", min_value=0.0, max_value=100.0, value=60.0, step=1.0)
@@ -121,7 +120,7 @@ elif authentication_status:
     solar = st.slider("Solar Radiation (W/m²)", min_value=0.0, max_value=1200.0, value=200.0, step=10.0)
 
     # --- PREDICTION LOGIC ---
-    if st.button("🔮 Predict Flash Flood Risk"):
+    if st.button("Predict Flash Flood Risk"):
         # Features array must match the model's expected features: 
         # ['temperature_c', 'humidity_pct', 'wind_speed_kmh', 'surface_pressure_kpa', 'solar_radiation_w_m2']
         input_data = pd.DataFrame({
@@ -137,16 +136,16 @@ elif authentication_status:
             probability = model.predict_proba(input_data)[0][1] * 100 # Probability of class 1
         
         if prediction == 1:
-            st.error(f"🚨 **HIGH RISK of Flash Flood!** ({probability:.1f}% confidence)")
+            st.error(f"**HIGH RISK of Flash Flood!** ({probability:.1f}% confidence)")
             st.markdown("Please take immediate precautions. Heavy rainfall and severe flooding are extremely likely based on the current atmospheric conditions.")
         else:
-            st.success(f"✅ **Safe. Low risk of Flash Flood.** ({100-probability:.1f}% confidence)")
+            st.success(f"**Safe. Low risk of Flash Flood.** ({100-probability:.1f}% confidence)")
             st.markdown("Weather conditions are stable. No immediate flood threat detected.")
 
     st.markdown("---")
     
     # --- ELABORATIVE SECTION ---
-    with st.expander("📊 Elaborative Section (Advanced Details)"):
+    with st.expander("Elaborative Section (Advanced Details)"):
         st.markdown("### Model Architecture & Insights")
         st.markdown("""
         This AI system uses a **Random Forest Classifier** composed of 100 decision trees, trained on 500,000 data points from NASA's climate resilience dataset for India. 
