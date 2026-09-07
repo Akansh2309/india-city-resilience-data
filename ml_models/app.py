@@ -53,16 +53,10 @@ users = {
         'admin': {
             'email': 'admin@floodsafe.in',
             'name': 'Administrator',
-            'password': 'abc' # Will be hashed below
+            'password': '$2b$12$Z57Ak44WU/dok3CAz/KzRO5S5ySptMXtzp2d45iJ0mUesrZ8ym2Z2' # Pre-hashed 'abc'
         }
     }
 }
-
-# In a real app, you would pre-hash the password and store it. Here we hash on the fly for simplicity.
-# streamlit-authenticator expects the config dictionary
-passwords = [users['usernames']['admin']['password']]
-hashed_passwords = stauth.Hasher(passwords).generate()
-users['usernames']['admin']['password'] = hashed_passwords[0]
 
 cookie_name = "floodsafe_cookie"
 cookie_key = "signature_key"
