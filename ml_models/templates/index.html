@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FloodSafe India | AI Prediction</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #0056b3;
+            --primary-hover: #004494;
+            --bg-gradient-start: #e0f2fe;
+            --bg-gradient-end: #bae6fd;
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --text-dark: #0f172a;
+            --text-light: #475569;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
+            color: var(--text-dark);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 2.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+            letter-spacing: -0.5px;
+        }
+
+        p.subtitle {
+            color: var(--text-light);
+            font-size: 1.1rem;
+            margin-bottom: 2.5rem;
+            line-height: 1.5;
+        }
+
+        .btn-predict {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 12px rgba(0, 86, 179, 0.2);
+        }
+
+        .btn-predict:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 86, 179, 0.3);
+        }
+
+        .btn-predict:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Loading Spinner */
+        .loader {
+            display: none;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 3px solid white;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Results Section */
+        #results-container {
+            display: none;
+            margin-top: 2rem;
+            text-align: left;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .risk-badge {
+            display: inline-block;
+            padding: 0.5rem 1.2rem;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .risk-high { background-color: #fee2e2; color: var(--danger); border: 1px solid #fca5a5; }
+        .risk-low { background-color: #d1fae5; color: var(--success); border: 1px solid #6ee7b7; }
+
+        .location-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--text-dark);
+        }
+
+        .weather-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .weather-item {
+            background: rgba(255, 255, 255, 0.5);
+            padding: 1rem;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        .weather-item .label {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            margin-bottom: 0.3rem;
+        }
+
+        .weather-item .value {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: var(--text-dark);
+        }
+
+        .transit-warning {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            color: #92400e;
+            padding: 1.2rem;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .transit-warning i {
+            font-size: 1.2rem;
+            color: #d97706;
+            margin-top: 2px;
+        }
+
+        #error-message {
+            display: none;
+            color: var(--danger);
+            background: #fee2e2;
+            padding: 1rem;
+            border-radius: 12px;
+            margin-top: 1.5rem;
+            font-size: 0.95rem;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="glass-card">
+            <h1>FloodSafe India</h1>
+            <p class="subtitle">AI-powered flash flood prediction using live hyperlocal weather data.</p>
+            
+            <button id="predict-btn" class="btn-predict" onclick="getLocation()">
+                <i class="fa-solid fa-location-crosshairs"></i>
+                <span id="btn-text">Predict Flood Risk for My Location</span>
+                <div class="loader" id="btn-loader"></div>
+            </button>
+
+            <div id="error-message"></div>
+
+            <div id="results-container">
+                <div id="risk-badge" class="risk-badge">Evaluating...</div>
+                <div class="location-name"><i class="fa-solid fa-map-pin"></i> <span id="loc-name">Fetching location...</span></div>
+                
+                <div class="weather-grid">
+                    <div class="weather-item">
+                        <div class="label">Temperature</div>
+                        <div class="value" id="val-temp">--</div>
+                    </div>
+                    <div class="weather-item">
+                        <div class="label">Humidity</div>
+                        <div class="value" id="val-humidity">--</div>
+                    </div>
+                    <div class="weather-item">
+                        <div class="label">Wind Speed</div>
+                        <div class="value" id="val-wind">--</div>
+                    </div>
+                    <div class="weather-item">
+                        <div class="label">Pressure</div>
+                        <div class="value" id="val-pressure">--</div>
+                    </div>
+                </div>
+
+                <div id="transit-warning" class="transit-warning" style="display: none;">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div id="transit-text"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const btn = document.getElementById('predict-btn');
+        const btnText = document.getElementById('btn-text');
+        const loader = document.getElementById('btn-loader');
+        const resultsContainer = document.getElementById('results-container');
+        const errorMessage = document.getElementById('error-message');
+
+        function setLoading(isLoading) {
+            if(isLoading) {
+                btn.disabled = true;
+                btnText.innerText = "Analyzing Live Data...";
+                loader.style.display = "block";
+                errorMessage.style.display = "none";
+                resultsContainer.style.display = "none";
+            } else {
+                btn.disabled = false;
+                btnText.innerText = "Refresh Prediction";
+                loader.style.display = "none";
+            }
+        }
+
+        function showError(msg) {
+            setLoading(false);
+            errorMessage.style.display = "block";
+            errorMessage.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> ${msg}`;
+        }
+
+        function getLocation() {
+            setLoading(true);
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(sendPosition, handleLocationError, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                });
+            } else {
+                showError("Geolocation is not supported by this browser.");
+            }
+        }
+
+        function handleLocationError(error) {
+            let msg = "An unknown error occurred.";
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    msg = "Location permission denied. Please allow location access in your browser settings to fetch live weather.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    msg = "Location information is unavailable.";
+                    break;
+                case error.TIMEOUT:
+                    msg = "The request to get user location timed out.";
+                    break;
+            }
+            showError(msg);
+        }
+
+        async function sendPosition(position) {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ latitude: lat, longitude: lon }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                displayResults(data);
+                
+            } catch (err) {
+                showError(`Failed to fetch prediction: ${err.message}`);
+            }
+        }
+
+        function displayResults(data) {
+            setLoading(false);
+            resultsContainer.style.display = "block";
+            
+            // Populate weather
+            document.getElementById('val-temp').innerText = `${data.weather.temperature_c}°C`;
+            document.getElementById('val-humidity').innerText = `${data.weather.humidity_pct}%`;
+            document.getElementById('val-wind').innerText = `${data.weather.wind_speed_kmh} km/h`;
+            document.getElementById('val-pressure').innerText = `${data.weather.surface_pressure_kpa.toFixed(1)} kPa`;
+            
+            // Populate Location Name
+            const locName = data.location_name || `Lat: ${data.latitude.toFixed(4)}, Lon: ${data.longitude.toFixed(4)}`;
+            document.getElementById('loc-name').innerText = locName;
+
+            // Risk Badge
+            const badge = document.getElementById('risk-badge');
+            const transitWarning = document.getElementById('transit-warning');
+            const transitText = document.getElementById('transit-text');
+
+            if (data.prediction === 1) {
+                badge.className = "risk-badge risk-high";
+                badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> HIGH FLOOD RISK (${data.probability.toFixed(1)}%)`;
+                
+                // Transit warning for HIGH risk
+                transitWarning.style.display = "flex";
+                transitWarning.style.background = "#fef2f2";
+                transitWarning.style.borderColor = "#fecaca";
+                transitWarning.style.color = "#991b1b";
+                
+                let areaName = locName.split(',')[0];
+                if(areaName.includes('Lat:')) areaName = "your area";
+                
+                transitText.innerHTML = `<strong>Severe Disruption Expected:</strong> Major arterial roads in and around ${areaName} are highly susceptible to severe waterlogging. Expect delays of 45-60+ mins on local suburban railway networks due to track inundation. Please avoid unnecessary travel.`;
+                
+            } else {
+                badge.className = "risk-badge risk-low";
+                badge.innerHTML = `<i class="fa-solid fa-check-circle"></i> SAFE (${(100 - data.probability).toFixed(1)}%)`;
+                
+                // Transit warning for LOW risk but maybe minor rain
+                transitWarning.style.display = "flex";
+                transitWarning.style.background = "#f0fdf4";
+                transitWarning.style.borderColor = "#bbf7d0";
+                transitWarning.style.color = "#166534";
+                
+                let areaName = locName.split(',')[0];
+                if(areaName.includes('Lat:')) areaName = "your area";
+                
+                transitText.innerHTML = `<strong>Normal Conditions:</strong> Transit systems in ${areaName} are operating normally. No significant waterlogging expected on roads or railway networks.`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,167 +1,116 @@
-import streamlit as st
-import pandas as pd
+from flask import Flask, request, jsonify, render_template
+import requests
 import joblib
+import pandas as pd
 import os
-import datetime
 
-# --- PAGE CONFIGURATION ---
-st.set_page_config(
-    page_title="FloodSafe India",
-    layout="centered",
-    initial_sidebar_state="collapsed"
-)
+app = Flask(__name__)
 
-# --- CSS FOR BEAUTIFUL UI ---
-st.markdown("""
-<style>
-    /* Minimalist styling */
-    .stApp {
-        background-color: #f8f9fa;
-        color: #212529;
-    }
-    h1 {
-        color: #0056b3;
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    }
-    .stButton>button {
-        width: 100%;
-        background-color: #0056b3;
-        color: white;
-        border-radius: 8px;
-        padding: 10px 24px;
-        font-size: 18px;
-        font-weight: bold;
-        transition: 0.3s;
-        border: none;
-    }
-    .stButton>button:hover {
-        background-color: #004494;
-        color: white;
-    }
-    /* Hide horizontal scroll */
-    body {
-        overflow-x: hidden;
-    }
-    .login-container {
-        padding: 2rem;
-        background-color: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        margin-top: 2rem;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# --- BULLETPROOF AUTHENTICATION ---
-def check_password():
-    if "password_correct" not in st.session_state:
-        st.session_state["password_correct"] = False
-    
-    if st.session_state["password_correct"]:
-        return True
-    
-    st.markdown("<div class='login-container'>", unsafe_allow_html=True)
-    st.title("Secure Login")
-    st.markdown("Welcome to **FloodSafe India**. Please authenticate to access the prediction portal.")
-    
-    username = st.text_input("Username (admin)")
-    password = st.text_input("Password (abc)", type="password")
-    
-    # Checkbox for 15-day persistence
-    remember_me = st.checkbox("Remember me for 15 days")
-    
-    if st.button("Login"):
-        if username == "admin" and password == "abc":
-            st.session_state["password_correct"] = True
-            st.session_state["username"] = username
-            if hasattr(st, "rerun"):
-                st.rerun()
-            else:
-                st.experimental_rerun()
-        else:
-            st.error("Incorrect username or password. Please use 'admin' and 'abc'.")
-            
-    with st.expander("Register (New User)"):
-        st.info("Registration is currently disabled in this demo version. Please use 'admin' / 'abc'.")
-    st.markdown("</div>", unsafe_allow_html=True)
-    return False
-
-if not check_password():
-    st.stop()
-
-# --- MAIN APP ---
-if st.sidebar.button("Logout"):
-    st.session_state["password_correct"] = False
-    if hasattr(st, "rerun"):
-        st.rerun()
-    else:
-        st.experimental_rerun()
-
-name = "Administrator"
-st.title("FloodSafe India")
-st.markdown(f"Welcome back, **{name}**! Use the simple sliders below to predict the likelihood of a flash flood.")
-
-# Check if model exists
-model_path = "flash_flood_model.joblib"
-
-# For local testing, if the model isn't in the current dir, look in the same directory as the script
-if not os.path.exists(model_path):
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    model_path = os.path.join(script_dir, "flash_flood_model.joblib")
-    
+# Load the model
+# For Render deployment, the root might be ml_models or the parent.
+model_path = os.path.join(os.path.dirname(__file__), "flash_flood_model.joblib")
 try:
     model = joblib.load(model_path)
 except Exception as e:
-    st.error(f"Error loading the AI model from {model_path}. Please ensure 'flash_flood_model.joblib' is in the same directory.")
-    st.stop()
+    print(f"Failed to load model from {model_path}: {e}")
+    model = None
 
-# --- UI SLIDERS (No Horizontal Scrolling) ---
-st.markdown("### Current Weather Conditions")
+@app.route('/')
+def home():
+    return render_template('index.html')
 
-temp = st.slider("Temperature (°C)", min_value=0.0, max_value=50.0, value=25.0, step=0.1)
-humidity = st.slider("Humidity (%)", min_value=0.0, max_value=100.0, value=60.0, step=1.0)
-wind = st.slider("Wind Speed (km/h)", min_value=0.0, max_value=150.0, value=10.0, step=1.0)
+@app.route('/predict', methods=['POST'])
+def predict():
+    if not model:
+        return jsonify({"error": "Model not loaded on server."}), 500
 
-# Secondary features (Pressure and Solar Radiation)
-pressure = st.slider("Surface Pressure (kPa)", min_value=90.0, max_value=110.0, value=101.3, step=0.1)
-solar = st.slider("Solar Radiation (W/m²)", min_value=0.0, max_value=1200.0, value=200.0, step=10.0)
+    data = request.get_json()
+    lat = data.get('latitude')
+    lon = data.get('longitude')
 
-# --- PREDICTION LOGIC ---
-if st.button("Predict Flash Flood Risk"):
-    # Features array must match the model's expected features: 
-    # ['temperature_c', 'humidity_pct', 'wind_speed_kmh', 'surface_pressure_kpa', 'solar_radiation_w_m2']
-    input_data = pd.DataFrame({
-        'temperature_c': [temp],
-        'humidity_pct': [humidity],
-        'wind_speed_kmh': [wind],
-        'surface_pressure_kpa': [pressure],
-        'solar_radiation_w_m2': [solar]
+    if lat is None or lon is None:
+        return jsonify({"error": "Latitude and longitude required"}), 400
+
+    # 1. Fetch Weather from Open-Meteo
+    weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,shortwave_radiation"
+    
+    try:
+        w_res = requests.get(weather_url, timeout=5)
+        w_res.raise_for_status()
+        w_data = w_res.json()
+        current = w_data.get('current', {})
+        
+        # Mapping to model features
+        temp = current.get('temperature_2m', 25.0)
+        humidity = current.get('relative_humidity_2m', 60.0)
+        wind = current.get('wind_speed_10m', 10.0)
+        pressure_hpa = current.get('surface_pressure', 1013.0)
+        solar = current.get('shortwave_radiation', 200.0)
+        
+        # Conversion
+        pressure_kpa = pressure_hpa / 10.0
+        
+    except Exception as e:
+        return jsonify({"error": f"Failed to fetch weather data: {str(e)}"}), 502
+
+    # 2. Fetch Location Name from Nominatim (OpenStreetMap)
+    # Important: Nominatim requires a User-Agent
+    headers = {
+        'User-Agent': 'FloodSafe-India-App/1.0 (Contact: admin@floodsafe.in)'
+    }
+    loc_url = f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json"
+    location_name = ""
+    try:
+        l_res = requests.get(loc_url, headers=headers, timeout=5)
+        if l_res.ok:
+            l_data = l_res.json()
+            address = l_data.get('address', {})
+            # Try to get the most relevant local name
+            city = address.get('city') or address.get('town') or address.get('village') or address.get('county')
+            state = address.get('state', '')
+            if city:
+                location_name = f"{city}, {state}".strip(", ")
+            else:
+                location_name = l_data.get('display_name', '').split(',')[0]
+    except Exception as e:
+        # Failsafe, don't crash the prediction if geocoding fails
+        location_name = f"Lat: {lat:.4f}, Lon: {lon:.4f}"
+
+    if not location_name:
+         location_name = f"Lat: {lat:.4f}, Lon: {lon:.4f}"
+
+    # 3. Predict using the ML Model
+    try:
+        input_df = pd.DataFrame({
+            'temperature_c': [temp],
+            'humidity_pct': [humidity],
+            'wind_speed_kmh': [wind],
+            'surface_pressure_kpa': [pressure_kpa],
+            'solar_radiation_w_m2': [solar]
+        })
+        
+        prediction = int(model.predict(input_df)[0])
+        probability = float(model.predict_proba(input_df)[0][1]) * 100
+        
+    except Exception as e:
+        return jsonify({"error": f"Model prediction failed: {str(e)}"}), 500
+
+    # 4. Return results
+    return jsonify({
+        "latitude": lat,
+        "longitude": lon,
+        "location_name": location_name,
+        "weather": {
+            "temperature_c": temp,
+            "humidity_pct": humidity,
+            "wind_speed_kmh": wind,
+            "surface_pressure_kpa": pressure_kpa,
+            "solar_radiation_w_m2": solar
+        },
+        "prediction": prediction,
+        "probability": probability
     })
-    
-    with st.spinner("Analyzing data with NASA AI Model..."):
-        prediction = model.predict(input_data)[0]
-        probability = model.predict_proba(input_data)[0][1] * 100 # Probability of class 1
-    
-    if prediction == 1:
-        st.error(f"**HIGH RISK of Flash Flood!** ({probability:.1f}% confidence)")
-        st.markdown("Please take immediate precautions. Heavy rainfall and severe flooding are extremely likely based on the current atmospheric conditions.")
-    else:
-        st.success(f"**Safe. Low risk of Flash Flood.** ({100-probability:.1f}% confidence)")
-        st.markdown("Weather conditions are stable. No immediate flood threat detected.")
 
-st.markdown("---")
-
-# --- ELABORATIVE SECTION ---
-with st.expander("Elaborative Section (Advanced Details)"):
-    st.markdown("### Model Architecture & Insights")
-    st.markdown("""
-    This AI system uses a **Random Forest Classifier** composed of 100 decision trees, trained on 500,000 data points from NASA's climate resilience dataset for India. 
-    
-    **How it works:**
-    1. **Temperature & Humidity:** Extremely high humidity combined with high temperatures often precedes massive convective storms.
-    2. **Wind & Pressure:** Sudden drops in surface pressure accompanied by high winds indicate severe cyclonic activity.
-    3. **Accuracy:** This model operates with **97%+ accuracy**, providing early warning signals for local municipalities and common citizens.
-    
-    The model processes these specific values to find non-linear patterns that precede flash floods.
-    """)
-    st.info(f"Session Timestamp: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+if __name__ == '__main__':
+    # Used only for local development
+    app.run(debug=True, host='0.0.0.0', port=5000)
