@@ -38,7 +38,10 @@
             top: 0; left: 0; right: 0; bottom: 0;
             z-index: -2;
             overflow: hidden;
-            background-color: #000;
+            background-color: #1e293b;
+            background-image: url('https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?q=80&w=2000&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
         }
 
         .video-bg {
@@ -552,20 +555,43 @@
 
         function buildDashboard(data) {
             document.getElementById('loc-name').innerText = data.location_name;
-            document.getElementById('loc-elevation').innerText = `Elevation: ${data.elevation} meters`;
+            document.getElementById('loc-elevation').innerText = data.elevation ? `Elevation: ${data.elevation} meters` : 'Elevation: N/A';
             
+            // Handle backwards compatibility if old cached backend responds
+            let primary = data.primary_params;
+            let extra = data.extra_params;
+            
+            if (!primary) {
+                if (data.elaborative) {
+                    primary = {
+                        "Temperature": data.elaborative["Temperature"] || "--",
+                        "Wind Speed": data.elaborative["Wind Speed"] || "--",
+                        "Rainfall": data.elaborative["Rain"] || "--",
+                        "Humidity": data.elaborative["Relative Humidity"] || "--",
+                        "Time of Day": data.elaborative["Time of Day"] || "--"
+                    };
+                    extra = data.elaborative;
+                } else {
+                    showError("Backend is still updating. Please wait 1 minute and refresh the page.");
+                    return;
+                }
+            }
+
             // Build Primary Grid
             const pGrid = document.getElementById('primary-grid');
             pGrid.innerHTML = "";
-            for (const [key, val] of Object.entries(data.primary_params)) {
+            for (const [key, val] of Object.entries(primary)) {
                 pGrid.innerHTML += createWeatherItem(key, val);
             }
 
             // Build Extra Grid
             const eGrid = document.getElementById('extra-grid');
             eGrid.innerHTML = "";
-            for (const [key, val] of Object.entries(data.extra_params)) {
-                eGrid.innerHTML += createWeatherItem(key, val);
+            for (const [key, val] of Object.entries(extra)) {
+                // don't duplicate primary keys
+                if (!primary[key]) {
+                    eGrid.innerHTML += createWeatherItem(key, val);
+                }
             }
         }
 
