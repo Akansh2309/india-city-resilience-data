@@ -42,6 +42,7 @@
             background-image: url('https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?q=80&w=2000&auto=format&fit=crop');
             background-size: cover;
             background-position: center;
+            transition: background-image 1s ease-in-out;
         }
 
         .video-bg {
@@ -444,6 +445,16 @@
         // Video swapping function
         function setVideoBackground(videoId) {
             const videos = document.querySelectorAll('.video-bg');
+            const container = document.querySelector('.video-bg-container');
+
+            if (videoId === 'bg-video-flood') {
+                container.style.backgroundImage = "url('https://images.unsplash.com/photo-1582264879201-925232ff4fb3?q=80&w=2000&auto=format&fit=crop')";
+            } else if (videoId === 'bg-video-landslide') {
+                container.style.backgroundImage = "url('https://images.unsplash.com/photo-1621217036735-a1c6a674170f?q=80&w=2000&auto=format&fit=crop')";
+            } else {
+                container.style.backgroundImage = "url('https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?q=80&w=2000&auto=format&fit=crop')";
+            }
+
             videos.forEach(vid => {
                 if(vid.id === videoId) {
                     vid.classList.add('active');
