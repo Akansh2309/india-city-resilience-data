@@ -356,6 +356,8 @@
             color: #ffffff;
             font-size: 1.4rem;
             text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            z-index: 10;
+            pointer-events: none;
         }
 
         #city-search {
@@ -826,7 +828,7 @@
                 
                 clearTimeout(searchTimeout);
                 
-                if (query.length < 2) {
+                if (query.length < 1) {
                     searchResults.style.display = 'none';
                     return;
                 }

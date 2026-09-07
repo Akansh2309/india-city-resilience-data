@@ -12,7 +12,7 @@ app = Flask(__name__)
 # Keys: "lat_lon" rounded to 2 decimals (~1.1km area)
 # Values: (data_dict, timestamp)
 PREDICTION_CACHE = {}
-CACHE_TTL_SECONDS = 3600 # 1 hour
+CACHE_TTL_SECONDS = 60 # 1 hour
 
 def get_cached_data(lat, lon):
     key = f"{round(lat, 2)}_{round(lon, 2)}"
