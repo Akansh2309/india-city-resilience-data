@@ -17,6 +17,7 @@
             --text-light: #64748b;
             --danger: #dc2626;
             --success: #16a34a;
+            --warning: #d97706;
         }
 
         body {
@@ -24,23 +25,45 @@
             margin: 0;
             padding: 0;
             min-height: 100vh;
-            /* Clean, professional background image related to weather/nature */
-            background-image: url('https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?q=80&w=2000&auto=format&fit=crop');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
             color: var(--text-dark);
             display: flex;
             justify-content: center;
             align-items: center;
+            overflow-x: hidden;
+        }
+
+        /* Video Background */
+        .video-bg-container {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: -2;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        .video-bg {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            transform: translateX(-50%) translateY(-50%);
+            transition: opacity 1s ease-in-out;
+            opacity: 0;
+        }
+
+        .video-bg.active {
+            opacity: 1;
         }
 
         /* Overlay to soften the background */
         .overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(226, 232, 240, 0.4);
-            z-index: 0;
+            background: rgba(226, 232, 240, 0.3);
+            z-index: -1;
         }
 
         .container {
@@ -49,6 +72,8 @@
             padding: 2rem;
             box-sizing: border-box;
             z-index: 1;
+            margin-top: 2rem;
+            margin-bottom: 2rem;
         }
 
         /* Flawless Glassmorphism */
@@ -84,7 +109,7 @@
             color: white;
             border: none;
             padding: 1.2rem 2.5rem;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 600;
             border-radius: 12px;
             cursor: pointer;
@@ -102,11 +127,25 @@
             box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
         }
 
-        .btn-primary:disabled {
-            background-color: #94a3b8;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
+        .btn-secondary {
+            background-color: #fff;
+            color: var(--text-dark);
+            border: 1px solid #cbd5e1;
+            padding: 1.2rem 2.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn-secondary:hover {
+            background-color: #f8fafc;
+            transform: translateY(-2px);
         }
 
         /* Views */
@@ -140,21 +179,40 @@
             font-weight: 700;
             color: var(--text-dark);
         }
+        .elevation-text {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin-top: 4px;
+        }
 
-        /* 15 Parameter Grid */
+        /* STRUCTURED WEATHER BOX */
+        .weather-box {
+            background: rgba(255, 255, 255, 0.95);
+            /* Aesthetic pattern background */
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 20px 20px;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            border: 1px solid rgba(255,255,255,1);
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
         .weather-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 1.5rem;
         }
 
         .weather-item {
-            background: rgba(255, 255, 255, 0.6);
+            background: #fff;
             padding: 1.2rem;
-            border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.8);
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
             box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+            text-align: center;
         }
 
         .weather-item .label {
@@ -167,23 +225,67 @@
         }
 
         .weather-item .value {
-            font-size: 1.1rem;
+            font-size: 1.2rem;
             font-weight: 700;
             color: var(--text-dark);
         }
 
+        #extra-params {
+            display: none;
+            margin-top: 1.5rem;
+            border-top: 1px dashed #cbd5e1;
+            padding-top: 1.5rem;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .expand-btn {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 40px;
+            height: 40px;
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            border-radius: 50%;
+            margin: 1.5rem auto 0 auto;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .expand-btn:hover {
+            background: #f1f5f9;
+            transform: translateY(2px);
+        }
+        
+        .expand-btn i {
+            color: var(--text-dark);
+            transition: transform 0.3s ease;
+        }
+        .expand-btn.open i {
+            transform: rotate(180deg);
+        }
+
         /* Analysis Section */
         .analysis-section {
-            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .result-box {
+            display: none;
+            background: rgba(255, 255, 255, 0.85);
             padding: 2rem;
             border-radius: 20px;
             text-align: center;
             border: 1px solid rgba(255, 255, 255, 0.9);
-        }
-
-        #risk-result {
-            display: none;
-            margin-top: 2rem;
             animation: fadeIn 0.6s ease;
         }
 
@@ -198,12 +300,12 @@
         }
         .risk-high { background-color: #fef2f2; color: var(--danger); border: 2px solid #fecaca; }
         .risk-low { background-color: #f0fdf4; color: var(--success); border: 2px solid #bbf7d0; }
+        .risk-warning { background-color: #fffbeb; color: var(--warning); border: 2px solid #fde68a; }
 
         .transit-warning {
             text-align: left;
-            background: #fffbeb;
-            border: 1px solid #fde68a;
-            color: #92400e;
+            background: #fff;
+            border: 1px solid #e2e8f0;
             padding: 1.5rem;
             border-radius: 16px;
             font-size: 1rem;
@@ -212,7 +314,7 @@
             gap: 15px;
             align-items: flex-start;
         }
-        .transit-warning i { font-size: 1.5rem; color: #d97706; }
+        .transit-warning i { font-size: 1.5rem; color: #475569; }
 
         #error-message {
             display: none;
@@ -232,13 +334,30 @@
     </style>
 </head>
 <body>
+
+    <!-- Cinematic Background Videos -->
+    <div class="video-bg-container">
+        <!-- Rain (Default) -->
+        <video id="vid-default" class="video-bg active" autoplay loop muted playsinline>
+            <source src="https://cdn.coverr.co/videos/coverr-heavy-rain-in-the-city-2713/1080p.mp4" type="video/mp4">
+        </video>
+        <!-- Flood -->
+        <video id="vid-flood" class="video-bg" loop muted playsinline>
+            <source src="https://cdn.coverr.co/videos/coverr-flooded-river-2651/1080p.mp4" type="video/mp4">
+        </video>
+        <!-- Landslide / Mountain -->
+        <video id="vid-landslide" class="video-bg" loop muted playsinline>
+            <source src="https://cdn.coverr.co/videos/coverr-mountain-scenery-2692/1080p.mp4" type="video/mp4">
+        </video>
+    </div>
+
     <div class="overlay"></div>
 
     <div class="container">
         <!-- VIEW 1: LANDING -->
         <div id="view-landing" class="glass-card">
             <h1>FloodSafe India</h1>
-            <p class="subtitle">AI-powered flash flood prediction using live, hyperlocal meteorological data. Get instant risk analysis based on 15 atmospheric parameters.</p>
+            <p class="subtitle">AI-powered dual prediction for Flash Floods and Landslides using live, hyperlocal meteorological and topographic data.</p>
             
             <button id="btn-fetch" class="btn-primary" onclick="getLocation()">
                 <i class="fa-solid fa-location-crosshairs"></i>
@@ -250,32 +369,56 @@
         </div>
 
         <!-- VIEW 2: DASHBOARD -->
-        <div id="view-dashboard" class="glass-card">
+        <div id="view-dashboard" class="glass-card" style="padding: 2rem;">
             <div class="dash-header">
                 <div>
                     <div style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 4px; font-weight: 600; text-transform: uppercase;">Current Location</div>
                     <div class="location-name"><i class="fa-solid fa-map-pin" style="color: var(--primary);"></i> <span id="loc-name">Loading...</span></div>
+                    <div class="elevation-text" id="loc-elevation"></div>
                 </div>
-                <button class="btn-primary" style="padding: 0.6rem 1.2rem; font-size: 0.9rem;" onclick="location.reload()">
+                <button class="btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.85rem;" onclick="location.reload()">
                     <i class="fa-solid fa-rotate-right"></i> Reset
                 </button>
             </div>
 
-            <div style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 1rem; font-weight: 600; text-transform: uppercase;">Live Atmospheric Data</div>
-            <div class="weather-grid" id="weather-grid">
-                <!-- Javascript will inject 15 cards here -->
+            <!-- Structured Weather Box -->
+            <div class="weather-box">
+                <div style="font-size: 0.9rem; color: var(--text-dark); margin-bottom: 1.5rem; font-weight: 700; text-transform: uppercase; text-align: center;">Live Weather Report</div>
+                
+                <!-- Primary 5 Parameters -->
+                <div class="weather-grid" id="primary-grid">
+                    <!-- Populated by JS -->
+                </div>
+
+                <!-- Extra 10 Parameters -->
+                <div id="extra-params">
+                    <div class="weather-grid" id="extra-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <div class="expand-btn" id="expand-btn" onclick="toggleParams()" title="Show all parameters">
+                    <i class="fa-solid fa-chevron-down"></i>
+                </div>
             </div>
 
+            <!-- Analysis Section with Dual Buttons -->
             <div class="analysis-section">
-                <button id="btn-analyze" class="btn-primary" onclick="revealRisk()">
-                    <i class="fa-solid fa-microchip"></i>
-                    <span>Analyze Flood Risk</span>
-                </button>
+                <div class="action-buttons">
+                    <button class="btn-primary" onclick="predictFlood()">
+                        <i class="fa-solid fa-water"></i> Predict Flood
+                    </button>
+                    <button class="btn-secondary" style="background: #475569; color: white; border: none;" onclick="predictLandslide()">
+                        <i class="fa-solid fa-mountain-sun"></i> Predict Landslide
+                    </button>
+                </div>
                 
-                <div id="risk-result">
+                <!-- Result Box -->
+                <div id="result-box" class="result-box">
+                    <div id="result-title" style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 1rem; font-weight: 700; text-transform: uppercase;"></div>
                     <div id="risk-badge" class="risk-badge">Evaluating...</div>
                     <div id="transit-warning" class="transit-warning">
-                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <i class="fa-solid fa-circle-info" id="transit-icon"></i>
                         <div id="transit-text"></div>
                     </div>
                 </div>
@@ -293,6 +436,34 @@
         const errorMessage = document.getElementById('error-message');
         
         let globalPredictionData = null;
+        let paramsExpanded = false;
+
+        // Video swapping function
+        function setVideoBackground(videoId) {
+            const videos = document.querySelectorAll('.video-bg');
+            videos.forEach(vid => {
+                if(vid.id === videoId) {
+                    vid.classList.add('active');
+                    vid.play().catch(e => console.log("Autoplay prevented", e));
+                } else {
+                    vid.classList.remove('active');
+                }
+            });
+        }
+
+        function toggleParams() {
+            const extraParams = document.getElementById('extra-params');
+            const btn = document.getElementById('expand-btn');
+            
+            paramsExpanded = !paramsExpanded;
+            if (paramsExpanded) {
+                extraParams.style.display = 'block';
+                btn.classList.add('open');
+            } else {
+                extraParams.style.display = 'none';
+                btn.classList.remove('open');
+            }
+        }
 
         function setLoading(isLoading) {
             if(isLoading) {
@@ -370,60 +541,123 @@
             }
         }
 
-        function buildDashboard(data) {
-            document.getElementById('loc-name').innerText = data.location_name;
-            
-            const grid = document.getElementById('weather-grid');
-            grid.innerHTML = ""; // Clear
-            
-            // Build 15 items
-            for (const [key, val] of Object.entries(data.elaborative)) {
-                const div = document.createElement('div');
-                div.className = 'weather-item';
-                div.innerHTML = `
+        function createWeatherItem(key, val) {
+            return `
+                <div class="weather-item">
                     <div class="label">${key}</div>
                     <div class="value">${val}</div>
-                `;
-                grid.appendChild(div);
+                </div>
+            `;
+        }
+
+        function buildDashboard(data) {
+            document.getElementById('loc-name').innerText = data.location_name;
+            document.getElementById('loc-elevation').innerText = `Elevation: ${data.elevation} meters`;
+            
+            // Build Primary Grid
+            const pGrid = document.getElementById('primary-grid');
+            pGrid.innerHTML = "";
+            for (const [key, val] of Object.entries(data.primary_params)) {
+                pGrid.innerHTML += createWeatherItem(key, val);
+            }
+
+            // Build Extra Grid
+            const eGrid = document.getElementById('extra-grid');
+            eGrid.innerHTML = "";
+            for (const [key, val] of Object.entries(data.extra_params)) {
+                eGrid.innerHTML += createWeatherItem(key, val);
             }
         }
 
-        function revealRisk() {
-            const btnAnalyze = document.getElementById('btn-analyze');
-            const resultDiv = document.getElementById('risk-result');
+        function predictFlood() {
+            setVideoBackground('vid-flood');
+            const data = globalPredictionData;
+            showResultBox("Flood Prediction");
+
             const badge = document.getElementById('risk-badge');
             const transitWarning = document.getElementById('transit-warning');
             const transitText = document.getElementById('transit-text');
+            const icon = document.getElementById('transit-icon');
             
-            // Hide button, show result
-            btnAnalyze.style.display = 'none';
-            resultDiv.style.display = 'block';
-
-            const data = globalPredictionData;
             let areaName = data.location_name.split(',')[0];
             if(areaName.includes('Lat:')) areaName = "your area";
 
             if (data.prediction === 1) {
                 badge.className = "risk-badge risk-high";
-                badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> HIGH FLOOD RISK (${data.probability.toFixed(1)}%)`;
+                badge.innerHTML = `<i class="fa-solid fa-water"></i> HIGH FLOOD RISK (${data.probability.toFixed(1)}%)`;
                 
                 transitWarning.style.background = "#fef2f2";
                 transitWarning.style.borderColor = "#fecaca";
-                transitWarning.style.color = "#991b1b";
-                transitWarning.querySelector('i').className = "fa-solid fa-triangle-exclamation";
+                icon.className = "fa-solid fa-triangle-exclamation";
+                icon.style.color = "#dc2626";
                 
                 transitText.innerHTML = `<strong>Severe Disruption Expected:</strong> Major arterial roads in and around ${areaName} are highly susceptible to severe waterlogging. Expect delays of 45-60+ mins on local suburban railway networks due to track inundation. Avoid unnecessary travel.`;
             } else {
                 badge.className = "risk-badge risk-low";
-                badge.innerHTML = `<i class="fa-solid fa-check-circle"></i> SAFE (${(100 - data.probability).toFixed(1)}%)`;
+                badge.innerHTML = `<i class="fa-solid fa-check-circle"></i> NO FLOOD RISK (${(100 - data.probability).toFixed(1)}%)`;
                 
                 transitWarning.style.background = "#f0fdf4";
                 transitWarning.style.borderColor = "#bbf7d0";
-                transitWarning.style.color = "#166534";
-                transitWarning.querySelector('i').className = "fa-solid fa-circle-info";
+                icon.className = "fa-solid fa-circle-check";
+                icon.style.color = "#16a34a";
                 
                 transitText.innerHTML = `<strong>Normal Conditions:</strong> Transit systems in ${areaName} are operating normally. No significant waterlogging expected on roads or railway networks based on current data.`;
             }
+        }
+
+        function predictLandslide() {
+            setVideoBackground('vid-landslide');
+            const data = globalPredictionData;
+            showResultBox("Landslide Prediction");
+
+            const badge = document.getElementById('risk-badge');
+            const transitWarning = document.getElementById('transit-warning');
+            const transitText = document.getElementById('transit-text');
+            const icon = document.getElementById('transit-icon');
+            
+            let areaName = data.location_name.split(',')[0];
+            if(areaName.includes('Lat:')) areaName = "your area";
+
+            if (data.landslide_prediction === 1) {
+                badge.className = "risk-badge risk-high";
+                badge.innerHTML = `<i class="fa-solid fa-mountain-sun"></i> HIGH LANDSLIDE RISK`;
+                
+                transitWarning.style.background = "#fef2f2";
+                transitWarning.style.borderColor = "#fecaca";
+                icon.className = "fa-solid fa-hill-rockslide";
+                icon.style.color = "#dc2626";
+                
+                transitText.innerHTML = `<strong>Mountainous Hazard:</strong> ${areaName} is at high elevation (${data.elevation}m) and experiencing heavy precipitation. Road closures, rockfalls, and mudslides are highly probable. Avoid mountain passes.`;
+            } else if (data.elevation > 300) {
+                badge.className = "risk-badge risk-warning";
+                badge.innerHTML = `<i class="fa-solid fa-mountain"></i> ELEVATED TERRAIN (SAFE)`;
+                
+                transitWarning.style.background = "#fffbeb";
+                transitWarning.style.borderColor = "#fde68a";
+                icon.className = "fa-solid fa-circle-info";
+                icon.style.color = "#d97706";
+                
+                transitText.innerHTML = `<strong>Safe Conditions:</strong> ${areaName} is at elevated terrain (${data.elevation}m), but current rainfall levels are not sufficient to trigger widespread landslides. Proceed with standard caution.`;
+            } else {
+                badge.className = "risk-badge risk-low";
+                badge.innerHTML = `<i class="fa-solid fa-check-circle"></i> LOW RISK (FLAT TERRAIN)`;
+                
+                transitWarning.style.background = "#f0fdf4";
+                transitWarning.style.borderColor = "#bbf7d0";
+                icon.className = "fa-solid fa-circle-check";
+                icon.style.color = "#16a34a";
+                
+                transitText.innerHTML = `<strong>Safe Conditions:</strong> ${areaName} is at low elevation (${data.elevation}m). Landslide risk is effectively zero.`;
+            }
+        }
+
+        function showResultBox(title) {
+            const resultBox = document.getElementById('result-box');
+            document.getElementById('result-title').innerText = title;
+            resultBox.style.display = 'none'; // reset animation
+            setTimeout(() => {
+                resultBox.style.display = 'block';
+            }, 10);
         }
     </script>
 </body>
