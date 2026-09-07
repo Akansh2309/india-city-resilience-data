@@ -464,22 +464,19 @@
     <div class="overlay"></div>
 
     <div class="container">
+        <!-- Top Search Panel -->
+        <div class="search-container" id="search-container" style="max-width: 600px; margin: 0 auto 2rem auto;">
+            <div class="search-input-wrapper">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="city-search" placeholder="Search for any city or district...">
+            </div>
+            <ul id="search-results" class="glass-datalist">
+                <!-- Results injected here -->
+            </ul>
+        </div>
+
         <!-- VIEW 1: LANDING -->
         <div id="view-landing" class="glass-card">
-            
-            <!-- Top Search Panel -->
-            <div class="search-container" id="search-container">
-                <div class="search-input-wrapper">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="text" id="city-search" placeholder="Search for any city or district...">
-                </div>
-                <ul id="search-results" class="glass-datalist">
-                    <!-- Results injected here -->
-                </ul>
-            </div>
-
-            <div style="font-size: 0.9rem; color: var(--text-light); text-transform: uppercase; font-weight: 700; margin-bottom: 2rem;">— OR —</div>
-
             <h1>FloodSafe India</h1>
             <p class="subtitle">AI-powered dual prediction for Flash Floods and Landslides using live, hyperlocal meteorological and topographic data.</p>
             
