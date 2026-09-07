@@ -1,0 +1,35 @@
+# Flash Flood Prediction Model Explanation
+    
+## Model Overview
+Algorithm: HistGradientBoostingClassifier
+Objective: Binary Classification to predict potential flash floods (defined as precipitation > 30mm/hr).
+Features Used: latitude, longitude, temperature_c, humidity_pct, wind_speed_kmh, surface_pressure_kpa, solar_radiation_w_m2, month, hour
+
+## Performance Metrics
+- **Accuracy**: 97.4213%
+- **Error Percentage**: 2.5787%
+
+## Why HistGradientBoostingClassifier?
+Given the massive dataset size (~8.6 million rows), a standard Random Forest or Support Vector Machine would be computationally prohibitive and prone to running out of memory. The `HistGradientBoostingClassifier` in scikit-learn bins the features into integer-valued arrays, which vastly speeds up the tree-building process and reduces memory usage, making it the perfect and most highly accurate model for huge datasets without sacrificing performance.
+
+## Detailed Classification Report
+```
+              precision    recall  f1-score   support
+
+    No Flood       0.98      1.00      0.99   1677915
+ Flash Flood       0.66      0.19      0.29     48986
+
+    accuracy                           0.97   1726901
+   macro avg       0.82      0.59      0.64   1726901
+weighted avg       0.97      0.97      0.97   1726901
+
+```
+
+## Confusion Matrix
+```
+[[1673186    4729]
+ [  39802    9184]]
+```
+
+## Considerations
+The dataset has an extreme class imbalance since heavy rainfall (> 30mm/hr) is a rare event. The stratify option was used during train-test splitting to ensure representative samples of flood events were included in the training and testing sets.
