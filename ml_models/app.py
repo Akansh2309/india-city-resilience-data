@@ -76,7 +76,7 @@ authenticator = stauth.Authenticate(
 )
 
 # --- LOGIN SCREEN ---
-name, authentication_status, username = authenticator.login('Login', 'main')
+name, authentication_status, username = authenticator.login(location='main')
 
 if authentication_status == False:
     st.error('Username/password is incorrect. Try admin / abc')
@@ -89,7 +89,7 @@ elif authentication_status == None:
         
 elif authentication_status:
     # --- MAIN APP ---
-    authenticator.logout('Logout', 'sidebar')
+    authenticator.logout(button_name='Logout', location='sidebar')
     
     st.title("FloodSafe India")
     st.markdown(f"Welcome back, **{name}**! Use the simple sliders below to predict the likelihood of a flash flood.")
