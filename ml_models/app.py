@@ -206,34 +206,32 @@ def nearby_advisory():
     if lat is None or lon is None:
         return jsonify({"error": "Latitude and longitude required"}), 400
 
-    # 1. Fetch nearby towns (within ~50km radius) using Overpass API
-    # 50km radius = 50000 meters
-    overpass_query = f'[out:json];node(around:50000,{lat},{lon})["place"~"city|town"];out 15;'
+    # 1. Fetch nearby towns (within ~50km radius) using Nominatim Bounding Box Search
+    # Nominatim viewbox format: left,top,right,bottom (lon_min, lat_max, lon_max, lat_min)
+    lat_f = float(lat)
+    lon_f = float(lon)
+    # Approx 50km is 0.45 degrees
+    delta = 0.45
+    viewbox = f"{lon_f - delta},{lat_f + delta},{lon_f + delta},{lat_f - delta}"
     
-    endpoints = [
-        "https://lz4.overpass-api.de/api/interpreter",
-        "https://overpass-api.de/api/interpreter",
-        "https://overpass.kumi.systems/api/interpreter"
-    ]
+    nominatim_url = f"https://nominatim.openstreetmap.org/search?q=[town]&format=json&limit=15&viewbox={viewbox}&bounded=1"
     
     elements = []
-    success = False
-    last_error = ""
-    
-    for url in endpoints:
-        try:
-            overpass_res = requests.post(url, data=overpass_query, timeout=10)
-            if overpass_res.status_code == 200:
-                overpass_data = overpass_res.json()
-                elements = overpass_data.get('elements', [])
-                success = True
-                break
-        except Exception as e:
-            last_error = str(e)
-            continue
-            
-    if not success:
-        return jsonify({"error": f"Overpass API failed on all endpoints. Last error: {last_error}"}), 502
+    try:
+        nom_res = requests.get(nominatim_url, headers={'User-Agent': 'FloodSafe-App/1.0'}, timeout=10)
+        if nom_res.status_code == 200:
+            data = nom_res.json()
+            for item in data:
+                # Format to match existing downstream logic
+                elements.append({
+                    'lat': float(item.get('lat')),
+                    'lon': float(item.get('lon')),
+                    'tags': {'name': item.get('name') or item.get('display_name', '').split(',')[0]}
+                })
+        else:
+            return jsonify({"error": f"Nominatim API failed with status {nom_res.status_code}"}), 502
+    except Exception as e:
+        return jsonify({"error": f"Nominatim API failed: {str(e)}"}), 502
         
     # Deduplicate by name just in case
     seen_names = set()
