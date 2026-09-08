@@ -154,5 +154,130 @@ def predict():
 
     return jsonify(response_data)
 
+import concurrent.futures
+
+def fetch_weather_for_town(town):
+    """Helper to fetch weather and predict risk for a single town."""
+    lat = town.get('lat')
+    lon = town.get('lon')
+    name = town.get('tags', {}).get('name', 'Unknown')
+    
+    weather_url = (
+        f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}"
+        "&current=temperature_2m,relative_humidity_2m,wind_speed_10m,surface_pressure,shortwave_radiation"
+    )
+    
+    try:
+        w_res = requests.get(weather_url, timeout=5)
+        if w_res.status_code != 200:
+            return None
+        current = w_res.json().get('current', {})
+        
+        input_data = {
+            "T2M": current.get('temperature_2m', 25.0),
+            "RH2M": current.get('relative_humidity_2m', 60.0),
+            "WS10M": current.get('wind_speed_10m', 10.0),
+            "PS": current.get('surface_pressure', 1013.0) / 10.0,
+            "ALLSKY_SFC_SW_DWN": current.get('shortwave_radiation', 200.0)
+        }
+        input_df = pd.DataFrame([input_data])
+        
+        if model:
+            prob = float(model.predict_proba(input_df)[0][1]) * 100
+        else:
+            prob = 0.0
+            
+        return {
+            "name": name,
+            "lat": lat,
+            "lon": lon,
+            "risk_probability": round(prob, 2),
+            "safe": prob < 50.0
+        }
+    except Exception:
+        return None
+
+@app.route('/nearby_advisory', methods=['POST'])
+def nearby_advisory():
+    data = request.get_json()
+    lat = data.get('latitude')
+    lon = data.get('longitude')
+    
+    if lat is None or lon is None:
+        return jsonify({"error": "Latitude and longitude required"}), 400
+
+    # 1. Fetch nearby towns (within ~50km radius) using Overpass API
+    # 50km radius = 50000 meters
+    overpass_query = f'[out:json];node(around:50000,{lat},{lon})["place"~"city|town"];out 15;'
+    try:
+        overpass_res = requests.post("https://overpass-api.de/api/interpreter", data=overpass_query, timeout=10)
+        overpass_data = overpass_res.json()
+        elements = overpass_data.get('elements', [])
+    except Exception as e:
+        return jsonify({"error": f"Overpass API failed: {str(e)}"}), 502
+        
+    # Deduplicate by name just in case
+    seen_names = set()
+    unique_towns = []
+    for el in elements:
+        name = el.get('tags', {}).get('name')
+        if name and name not in seen_names:
+            seen_names.add(name)
+            unique_towns.append(el)
+            
+    # We don't want to query too many, limit to 8
+    unique_towns = unique_towns[:8]
+
+    # 2. Concurrently fetch weather and predict risk
+    results = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        futures = [executor.submit(fetch_weather_for_town, town) for town in unique_towns]
+        for future in concurrent.futures.as_completed(futures):
+            res = future.result()
+            if res:
+                results.append(res)
+                
+    # 3. Separate into Safe and Restricted
+    safe_zones = [r for r in results if r['safe']]
+    restricted_zones = [r for r in results if not r['safe']]
+    
+    # Sort by risk (lowest risk first for safe, highest risk first for restricted)
+    safe_zones.sort(key=lambda x: x['risk_probability'])
+    restricted_zones.sort(key=lambda x: x['risk_probability'], reverse=True)
+
+    return jsonify({
+        "safe_zones": safe_zones,
+        "restricted_zones": restricted_zones
+    })
+
+@app.route('/historical_rainfall', methods=['POST'])
+def historical_rainfall():
+    data = request.get_json()
+    lat = data.get('latitude')
+    lon = data.get('longitude')
+    
+    if lat is None or lon is None:
+        return jsonify({"error": "Latitude and longitude required"}), 400
+        
+    # Open-Meteo provides past_days=7 natively in the forecast endpoint!
+    url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=precipitation_sum&past_days=7&forecast_days=1&timezone=auto"
+    
+    try:
+        res = requests.get(url, timeout=5)
+        res.raise_for_status()
+        data = res.json().get('daily', {})
+        
+        # Open-Meteo returns 'time' and 'precipitation_sum' arrays
+        times = data.get('time', [])
+        precip = data.get('precipitation_sum', [])
+        
+        # We only want the past 7 days (exclude today/tomorrow if they are at the end)
+        return jsonify({
+            "labels": times[:7],
+            "data": precip[:7]
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

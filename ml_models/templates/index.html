@@ -445,6 +445,7 @@
             border-radius: 10px;
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -544,6 +545,21 @@
                     <div id="transit-warning" class="transit-warning">
                         <i class="fa-solid fa-circle-info" id="transit-icon"></i>
                         <div id="transit-text"></div>
+                    </div>
+                </div>
+
+                <!-- Chart.js historical trend container -->
+                <div id="chart-container" style="display: none; margin-top: 1.5rem; background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                    <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.5rem; font-weight: 600; text-transform: uppercase;">7-Day Historical Rainfall Trend</div>
+                    <canvas id="rainfallChart" style="max-height: 200px;"></canvas>
+                </div>
+
+                <!-- Nearby 50km Advisory container -->
+                <div id="advisory-container" style="display: none; margin-top: 1.5rem;">
+                    <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.5rem; font-weight: 600; text-transform: uppercase;">Nearby 50km Travel Advisory</div>
+                    <div id="advisory-loading" style="font-size: 0.8rem; color: rgba(255,255,255,0.7);"><i class="fa-solid fa-spinner fa-spin"></i> Scanning neighboring towns...</div>
+                    <div id="advisory-content" style="display: none; gap: 0.5rem; flex-direction: column;">
+                        <!-- JS populated -->
                     </div>
                 </div>
             </div>
@@ -670,9 +686,150 @@
                 viewLanding.style.display = "none";
                 viewDashboard.style.display = "block";
                 
+                // Fetch the newly added additional data
+                fetchAdditionalData(lat, lon);
+                
             } catch (err) {
                 showError(err.message);
             }
+        }
+
+        async function fetchAdditionalData(lat, lon) {
+            // Show containers
+            document.getElementById('advisory-container').style.display = 'block';
+            document.getElementById('chart-container').style.display = 'block';
+            
+            // Fetch Historical Rainfall
+            fetch('/historical_rainfall', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ latitude: lat, longitude: lon }),
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(!data.error) {
+                    renderChart(data.labels, data.data);
+                }
+            })
+            .catch(err => console.log('Chart error:', err));
+            
+            // Fetch Advisory
+            const advisoryContent = document.getElementById('advisory-content');
+            const advisoryLoading = document.getElementById('advisory-loading');
+            advisoryContent.innerHTML = '';
+            advisoryLoading.style.display = 'block';
+            advisoryContent.style.display = 'none';
+
+            fetch('/nearby_advisory', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ latitude: lat, longitude: lon }),
+            })
+            .then(res => res.json())
+            .then(data => {
+                advisoryLoading.style.display = 'none';
+                advisoryContent.style.display = 'flex';
+                
+                if (data.error) {
+                    advisoryContent.innerHTML = `<div style="color:var(--error); font-size:0.85rem;">Error: ${data.error}</div>`;
+                    return;
+                }
+                
+                let html = '';
+                
+                if (data.restricted_zones && data.restricted_zones.length > 0) {
+                    data.restricted_zones.forEach(zone => {
+                        html += `
+                        <div style="background: rgba(220,38,38,0.1); border-left: 3px solid #dc2626; padding: 0.5rem; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: 600; font-size: 0.9rem; color: #fecaca;">${zone.name}</div>
+                                <div style="font-size: 0.75rem; color: rgba(255,255,255,0.7);">High Risk Zone</div>
+                            </div>
+                            <div style="color: #dc2626; font-weight: bold; font-size: 0.85rem;">${zone.risk_probability}% Risk</div>
+                        </div>`;
+                    });
+                }
+                
+                if (data.safe_zones && data.safe_zones.length > 0) {
+                    data.safe_zones.forEach(zone => {
+                        html += `
+                        <div style="background: rgba(22,163,74,0.1); border-left: 3px solid #16a34a; padding: 0.5rem; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: 600; font-size: 0.9rem; color: #bbf7d0;">${zone.name}</div>
+                                <div style="font-size: 0.75rem; color: rgba(255,255,255,0.7);">Safe Zone</div>
+                            </div>
+                            <div style="color: #16a34a; font-weight: bold; font-size: 0.85rem;">${zone.risk_probability}% Risk</div>
+                        </div>`;
+                    });
+                }
+                
+                if (html === '') {
+                    html = `<div style="font-size:0.85rem; color:rgba(255,255,255,0.7);">No major towns found within 50km.</div>`;
+                }
+                
+                advisoryContent.innerHTML = html;
+            })
+            .catch(err => {
+                advisoryLoading.style.display = 'none';
+                advisoryContent.style.display = 'flex';
+                advisoryContent.innerHTML = `<div style="color:var(--error); font-size:0.85rem;">Failed to load advisory.</div>`;
+                console.log('Advisory error:', err);
+            });
+        }
+        
+        let rainfallChartInstance = null;
+        function renderChart(labels, data) {
+            const ctx = document.getElementById('rainfallChart').getContext('2d');
+            
+            // Format labels from YYYY-MM-DD to short form (e.g., Sep 1)
+            const shortLabels = labels.map(l => {
+                const d = new Date(l);
+                return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            });
+            
+            if(rainfallChartInstance) {
+                rainfallChartInstance.destroy();
+            }
+            
+            rainfallChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: shortLabels,
+                    datasets: [{
+                        label: 'Precipitation (mm)',
+                        data: data,
+                        backgroundColor: 'rgba(56, 189, 248, 0.6)',
+                        borderColor: 'rgba(56, 189, 248, 1)',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.parsed.y + ' mm';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: 'rgba(255,255,255,0.7)' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: 'rgba(255,255,255,0.7)' }
+                        }
+                    }
+                }
+            });
         }
 
         function createWeatherItem(key, val) {
@@ -835,40 +992,47 @@
 
                 searchTimeout = setTimeout(async () => {
                     try {
-                        // Fetch from Open-Meteo Geocoding API
-                        const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=10&language=en&format=json`);
+                        // Fetch from Nominatim API (OpenStreetMap)
+                        const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&countrycodes=in&addressdetails=1&limit=8`, {
+                            headers: {
+                                'Accept-Language': 'en'
+                            }
+                        });
                         const data = await response.json();
                         
                         searchResults.innerHTML = '';
                         
-                        if (data.results && data.results.length > 0) {
-                            // Filter specifically for India
-                            const indianResults = data.results.filter(r => r.country_code === 'IN');
-                            
-                            if (indianResults.length > 0) {
-                                indianResults.forEach(loc => {
-                                    const li = document.createElement('li');
-                                    li.innerHTML = `<div><i class="fa-solid fa-location-dot" style="margin-right: 10px; color: var(--primary);"></i> <strong>${loc.name}</strong></div> <span class="search-badge">${loc.admin1 || ''}</span>`;
+                        if (data && data.length > 0) {
+                            data.forEach(loc => {
+                                const li = document.createElement('li');
+                                
+                                // Format the display name to be cleaner
+                                let mainName = loc.name || loc.display_name.split(',')[0];
+                                let subName = '';
+                                if(loc.address) {
+                                    if(loc.address.state_district) subName += loc.address.state_district;
+                                    else if(loc.address.county) subName += loc.address.county;
+                                    if(loc.address.state) subName += (subName ? ', ' : '') + loc.address.state;
+                                }
+
+                                li.innerHTML = `<div><i class="fa-solid fa-location-dot" style="margin-right: 10px; color: var(--primary);"></i> <strong>${mainName}</strong></div> <span class="search-badge">${subName}</span>`;
+                                
+                                li.addEventListener('click', () => {
+                                    searchInput.value = mainName;
+                                    searchResults.style.display = 'none';
                                     
-                                    li.addEventListener('click', () => {
-                                        searchInput.value = loc.name;
-                                        searchResults.style.display = 'none';
-                                        
-                                        // Trigger the same flow as "Get Live Location" but with these coords!
-                                        setLoading(true);
-                                        fetchData({
-                                            coords: {
-                                                latitude: loc.latitude,
-                                                longitude: loc.longitude
-                                            }
-                                        });
+                                    // Trigger the same flow as "Get Live Location" but with these coords!
+                                    setLoading(true);
+                                    fetchData({
+                                        coords: {
+                                            latitude: parseFloat(loc.lat),
+                                            longitude: parseFloat(loc.lon)
+                                        }
                                     });
-                                    searchResults.appendChild(li);
                                 });
-                                searchResults.style.display = 'block';
-                            } else {
-                                searchResults.style.display = 'none';
-                            }
+                                searchResults.appendChild(li);
+                            });
+                            searchResults.style.display = 'block';
                         } else {
                             searchResults.style.display = 'none';
                         }
