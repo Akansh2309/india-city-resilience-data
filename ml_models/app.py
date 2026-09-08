@@ -209,12 +209,31 @@ def nearby_advisory():
     # 1. Fetch nearby towns (within ~50km radius) using Overpass API
     # 50km radius = 50000 meters
     overpass_query = f'[out:json];node(around:50000,{lat},{lon})["place"~"city|town"];out 15;'
-    try:
-        overpass_res = requests.post("https://overpass-api.de/api/interpreter", data=overpass_query, timeout=10)
-        overpass_data = overpass_res.json()
-        elements = overpass_data.get('elements', [])
-    except Exception as e:
-        return jsonify({"error": f"Overpass API failed: {str(e)}"}), 502
+    
+    endpoints = [
+        "https://lz4.overpass-api.de/api/interpreter",
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter"
+    ]
+    
+    elements = []
+    success = False
+    last_error = ""
+    
+    for url in endpoints:
+        try:
+            overpass_res = requests.post(url, data=overpass_query, timeout=10)
+            if overpass_res.status_code == 200:
+                overpass_data = overpass_res.json()
+                elements = overpass_data.get('elements', [])
+                success = True
+                break
+        except Exception as e:
+            last_error = str(e)
+            continue
+            
+    if not success:
+        return jsonify({"error": f"Overpass API failed on all endpoints. Last error: {last_error}"}), 502
         
     # Deduplicate by name just in case
     seen_names = set()
